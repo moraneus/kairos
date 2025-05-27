@@ -26,8 +26,6 @@ class TestFrontierModelScenarios:
     derivation, comparisons (happens-before, concurrency), and string representation.
     """
 
-    # --- New "Normal" Tests ---
-
     def test_01_holds_multiple_literals_on_different_events(self):
         """
         Tests the `holds()` helper for checking propositions spread across
