@@ -10,8 +10,8 @@ processes each M-literal depends on.
 """
 
 from typing import Dict, Set, List, Optional, Protocol
-from parser.ast_nodes import Expr, Literal  # Keep this, might be used by ProcessAnnotation or future uses
-from model.event import Event  # Used by check_gamma_satisfaction
+from parser.ast_nodes import Expr, Literal
+from model.event import Event
 from model.initial_event import IOTA_LITERAL_NAME
 
 
@@ -76,7 +76,7 @@ def check_gamma_satisfaction(event: Event, process_id: str, gamma_mapping: Dict[
     if not gamma_i:
         return True
 
-    from model.frontier import Frontier
+    from model.frontier import Frontier # Circular import guard might be needed if used differently
     temp_frontier = Frontier({process_id: event})
 
     from logic.ep_block_fsm import _holds  # Circular import guard might be needed if used differently

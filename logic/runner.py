@@ -192,8 +192,8 @@ class PropertyAndTraceMonitor:
             # Call the new visualization function
             try:
                 # Ensure EPBlockFSM class has this method
-                if hasattr(fsm, 'visualize_fsm_state'):
-                    fsm.visualize_fsm_state(f"fsm_state_{idx}")  # fmt defaults to "png"
+                if hasattr(fsm, 'visualize_state'):
+                    fsm.visualize_state(f"fsm_state_{idx}")  # fmt defaults to "png"
                 else:
                     print(f"[INFO] visualize_fsm_state method not found on FSM {idx}.")
             except Exception as e:
