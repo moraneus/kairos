@@ -21,6 +21,33 @@ from .vector_clock import VectorClock
 class Frontier:
     events: Dict[str, Event] = field(default_factory=dict)
 
+    def id_short(self) -> str:
+        """
+        Generates a short, human-readable identifier for the frontier.
+        This is often based on a hash of its constituent events for brevity.
+        """
+        if not self.events:
+            return "empty_fr"  # Or any other placeholder for an empty frontier
+
+        # Create a stable, sorted representation of the event identifiers (or event hashes)
+        # to ensure the ID is consistent for the same frontier content.
+        # Assuming Event objects have a stable, hashable 'id' or can be reliably sorted.
+        # If events themselves are not directly hashable for this purpose,
+        # use their unique IDs or a stable string representation.
+        try:
+            # Sort by process ID to ensure consistent order for hashing
+            # Use event.id if events have a unique identifier, otherwise str(event) or hash(event)
+            # This example assumes events have a simple, sortable ID or can be stringified.
+            # Adjust based on your Event class structure.
+            relevant_event_parts = [f"{proc_id}:{event.eid}" for proc_id, event in sorted(self.events.items())]
+            events_tuple = tuple(relevant_event_parts)
+        except AttributeError:  # Fallback if event.id isn't available or sortable like this
+            events_tuple = tuple(sorted(str(event) for event in self.events.values()))
+
+        # Using the first 7 characters of the hex representation of the hash (excluding "0x")
+        # This provides a reasonably short and somewhat unique ID for display.
+        return hex(hash(events_tuple))[2:9]
+
     @property
     def vc(self) -> VectorClock:
         """
