@@ -549,7 +549,6 @@ TBD
 
 - Built upon research in distributed systems runtime verification
 - Implements algorithms from the PBTL monitoring literature
-- Inspired by the ancient Greek concept of καιρός (kairos) - the opportune moment
 
 ---
 
