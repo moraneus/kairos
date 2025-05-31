@@ -30,20 +30,17 @@ class TestPBTLParserBasic:
         "p & q",
         "p | r",
         "EP(s)",
-
         # Precedence and associativity
         "p & q | r",  # AND has higher precedence than OR
         "p | q & r",  # Confirms AND is evaluated before OR
         "a & b & c",  # Ensures AND is left-associative
         "a | b | c",  # Ensures OR is left-associative
         "!!!p",  # Multiple unary NOT operators
-
         # Parentheses and grouping
         "p & (q | r)",  # Parentheses override default precedence
         "!(p & q)",  # Negation of grouped expression
         "((p))",  # Redundant parentheses
         "(p & q) | (r & s)",  # Multiple grouped expressions
-
         # Temporal operator (EP) combinations
         "EP(p & q)",  # Conjunction inside EP
         "!EP(p)",  # Negation of temporal expression
@@ -51,27 +48,22 @@ class TestPBTLParserBasic:
         "EP(EP(p))",  # Nested temporal operators
         "EP(p | !q)",  # Negation within temporal operand
         "EP(p) | EP(q)",  # Disjunction of temporal expressions
-
         # Complex nested expressions
         "!((p | q) & (r | s))",  # Complex negated expression
         "EP(p & (q | (r & !s)))",  # Deep nesting inside EP
         "a & (b | (c & (d | (e & f))))",  # Very deep right-associative nesting
-
         # Boolean constants
         "true",
         "false",
         "!false",
         "(p | true) & !false",
-
         # Whitespace handling
         " p\n& \tq ",  # Various whitespace characters
         "  EP(p)  ",  # Leading/trailing whitespace
-
         # Complex identifier patterns
         "variable_123",
         "_underscore_start",
         "id_with_EP_substring",
-
         # Mixed complexity cases
         "EP(true | false) & !EP(p & q)",
         "((EP(p) | !q) & (r | EP(s)))",

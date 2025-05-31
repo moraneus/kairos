@@ -514,19 +514,13 @@ class TestMonitorEdgeCases:
 
         # Event 1: request
         req_event = create_event(
-            "req",
-            {"Client", "Server"},
-            {"Client": 1, "Server": 1},
-            {"request"}
+            "req", {"Client", "Server"}, {"Client": 1, "Server": 1}, {"request"}
         )
         monitor.process_event(req_event)
 
         # Event 2: response
         resp_event = create_event(
-            "resp",
-            {"Server", "Client"},
-            {"Client": 2, "Server": 2},
-            {"response"}
+            "resp", {"Server", "Client"}, {"Client": 2, "Server": 2}, {"response"}
         )
         monitor.process_event(resp_event)
 
@@ -546,20 +540,12 @@ class TestMonitorEdgeCases:
 
         # Event 1: process started
         start_event = create_event(
-            "start",
-            {"Worker"},
-            {"Worker": 2},
-            {"process_started"}
+            "start", {"Worker"}, {"Worker": 2}, {"process_started"}
         )
         monitor.process_event(start_event)
 
         # Event 2: fatal error occurs
-        error_event = create_event(
-            "error",
-            {"Worker"},
-            {"Worker": 1},
-            {"fatal_error"}
-        )
+        error_event = create_event("error", {"Worker"}, {"Worker": 1}, {"fatal_error"})
         monitor.process_event(error_event)
 
         # Finalize and check verdict
@@ -578,28 +564,19 @@ class TestMonitorEdgeCases:
 
         # Event 1: Node1 prepares
         prep1_event = create_event(
-            "prep1",
-            {"Node1"},
-            {"Node1": 1, "Node2": 0, "Node3": 0},
-            {"prepare"}
+            "prep1", {"Node1"}, {"Node1": 1, "Node2": 0, "Node3": 0}, {"prepare"}
         )
         monitor.process_event(prep1_event)
 
         # Event 2: Node2 prepares
         prep2_event = create_event(
-            "prep2",
-            {"Node2"},
-            {"Node1": 0, "Node2": 1, "Node3": 0},
-            {"prepare"}
+            "prep2", {"Node2"}, {"Node1": 0, "Node2": 1, "Node3": 0}, {"prepare"}
         )
         monitor.process_event(prep2_event)
 
         # Event 3: Node3 prepares
         prep3_event = create_event(
-            "prep3",
-            {"Node3"},
-            {"Node1": 0, "Node2": 0, "Node3": 1},
-            {"prepare"}
+            "prep3", {"Node3"}, {"Node1": 0, "Node2": 0, "Node3": 1}, {"prepare"}
         )
         monitor.process_event(prep3_event)
 
@@ -608,7 +585,7 @@ class TestMonitorEdgeCases:
             "commit",
             {"Node1", "Node2", "Node3"},
             {"Node1": 2, "Node2": 2, "Node3": 2},
-            {"commit"}
+            {"commit"},
         )
         monitor.process_event(commit_event)
 
@@ -628,19 +605,13 @@ class TestMonitorEdgeCases:
 
         # Event 1: Node1 prepares
         prep1_event = create_event(
-            "prep1",
-            {"Node1"},
-            {"Node1": 1, "Node2": 0, "Node3": 0},
-            {"prepare"}
+            "prep1", {"Node1"}, {"Node1": 1, "Node2": 0, "Node3": 0}, {"prepare"}
         )
         monitor.process_event(prep1_event)
 
         # Event 2: Node2 prepares
         prep2_event = create_event(
-            "prep2",
-            {"Node2"},
-            {"Node1": 0, "Node2": 1, "Node3": 0},
-            {"prepare"}
+            "prep2", {"Node2"}, {"Node1": 0, "Node2": 1, "Node3": 0}, {"prepare"}
         )
         monitor.process_event(prep2_event)
 
@@ -649,7 +620,7 @@ class TestMonitorEdgeCases:
             "abort",
             {"Node1", "Node2", "Node3"},
             {"Node1": 2, "Node2": 2, "Node3": 1},
-            {"abort"}
+            {"abort"},
         )
         monitor.process_event(abort_event)
 
@@ -658,7 +629,7 @@ class TestMonitorEdgeCases:
             "commit",
             {"Node1", "Node2", "Node3"},
             {"Node1": 3, "Node2": 3, "Node3": 2},
-            {"commit"}
+            {"commit"},
         )
         monitor.process_event(commit_event)
 

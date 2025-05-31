@@ -27,13 +27,11 @@ class TestDLNFTransformation:
         # Basic distribution cases
         ("EP(p | q)", "(EP(p) | EP(q))"),
         ("EP(p & q)", "EP((p & q))"),
-
         # Left-associative OR chains
         ("EP((p | q) | r)", "((EP(p) | EP(q)) | EP(r))"),
         ("EP((p & q) | r)", "(EP((p & q)) | EP(r))"),
         ("EP(p | q) | EP(r)", "((EP(p) | EP(q)) | EP(r))"),
         ("EP(a | b | c | d)", "(((EP(a) | EP(b)) | EP(c)) | EP(d))"),
-
         # DNF conversion within EP
         (
             "EP((p | q) & (r | s))",
@@ -43,30 +41,24 @@ class TestDLNFTransformation:
             "EP(a|b) & EP(c|d)",
             "(((EP(a) & EP(c)) | (EP(a) & EP(d))) | (EP(b) & EP(c))) | (EP(b) & EP(d))",
         ),
-
         # Complex nested structures
         (
             "EP(a & (b | (c & (d | e))))",
             "((EP((a & b)) | EP(((a & c) & d))) | EP(((a & c) & e)))",
         ),
-
         # Negation and De Morgan's laws
         ("EP(!(p & q))", "(EP(!p) | EP(!q))"),
         ("EP(!!(p | q))", "(EP(p) | EP(q))"),
         ("EP(!(EP(p & q)))", "EP(!(EP((p & q))))"),
         ("EP(p | !(q & r))", "((EP(p) | EP(!q)) | EP(!r))"),
         ("EP(!((p | !q) & r))", "(EP((!p & q)) | EP(!r))"),
-
         # Nested EP expressions
         ("EP(p | EP(q | r))", "((EP(p) | EP(EP(q))) | EP(EP(r)))"),
         (
             "EP(a | (b & EP(c | (d & EP(e | f)))))",
             "(((EP(a) | EP((b & EP(c)))) | EP((b & EP((d & EP(e)))))) | EP((b & EP((d & EP(f))))))",
         ),
-        (
-            "EP(!(p & (q | EP(r | s))))",
-            "(EP(!p) | EP(((!q & !EP(r)) & !EP(s))))"
-        ),
+        ("EP(!(p & (q | EP(r | s))))", "(EP(!p) | EP(((!q & !EP(r)) & !EP(s))))"),
     ]
 
     @pytest.mark.parametrize("input_formula, expected_output", TEST_CASES)
@@ -115,9 +107,9 @@ class TestDLNFTransformation:
         logger.debug(f"Validating DLNF structure for: {transformed_str}")
 
         # Verify no OR operators exist within EP expressions
-        assert not OR_IN_EP_PATTERN.search(transformed_str), (
-            f"Invalid DLNF structure: Found '|' inside EP() in: {transformed_str}"
-        )
+        assert not OR_IN_EP_PATTERN.search(
+            transformed_str
+        ), f"Invalid DLNF structure: Found '|' inside EP() in: {transformed_str}"
 
     @pytest.mark.parametrize("input_formula, expected_output", TEST_CASES)
     def test_dlnf_transformation_idempotence(self, input_formula, expected_output):
@@ -167,9 +159,9 @@ class TestDLNFTransformation:
             result = parse_and_dlnf(input_formula)
             result_str = str(result)
 
-            assert result_str == expected, (
-                f"Simple case failed: {input_formula} -> {result_str}, expected {expected}"
-            )
+            assert (
+                result_str == expected
+            ), f"Simple case failed: {input_formula} -> {result_str}, expected {expected}"
 
     def test_complex_nested_formula(self):
         """Test transformation on highly complex nested formula."""
@@ -182,9 +174,9 @@ class TestDLNFTransformation:
         result_str = str(result)
 
         # Verify no OR within EP
-        assert not OR_IN_EP_PATTERN.search(result_str), (
-            f"Complex formula contains invalid structure: {result_str}"
-        )
+        assert not OR_IN_EP_PATTERN.search(
+            result_str
+        ), f"Complex formula contains invalid structure: {result_str}"
 
         # Verify idempotence
         second_result = parse_and_dlnf(result_str)

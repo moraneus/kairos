@@ -44,26 +44,21 @@ class TestPBTLLexer:
         ("true", ["TRUE"]),
         ("false", ["FALSE"]),
         ("a_valid_identifier", ["ID"]),
-
         # Case sensitivity verification
         ("ep", ["ID"]),
         ("True", ["ID"]),
         ("False", ["ID"]),
-
         # Keyword-identifier boundary cases
         ("EPtrue", ["ID"]),
         ("falseEP", ["ID"]),
         ("id_containing_true_keyword", ["ID"]),
         ("EP_is_an_id", ["ID"]),
-
         # Operator and punctuation tokenization
         ("! & | ( )", ["NOT", "AND", "OR", "LPAREN", "RPAREN"]),
         ("p&q|!r", ["ID", "AND", "ID", "OR", "NOT", "ID"]),
         ("()", ["LPAREN", "RPAREN"]),
-
         # Whitespace handling
         (" \t EP \n (p) ", ["EP", "LPAREN", "ID", "RPAREN"]),
-
         # Complex expressions
         (
             "EP( an_id | true ) & !false",
@@ -130,9 +125,42 @@ class TestPBTLLexer:
 
     # Invalid characters that should trigger lexer errors
     ILLEGAL_CHARACTERS = [
-        "@", "#", "$", "%", "^", "*", "=", "`", "~", "?", ":", ";",
-        ".", ",", "<", ">", "/", "[", "]", "{", "}", '"', "'", "\\",
-        "+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+        "@",
+        "#",
+        "$",
+        "%",
+        "^",
+        "*",
+        "=",
+        "`",
+        "~",
+        "?",
+        ":",
+        ";",
+        ".",
+        ",",
+        "<",
+        ">",
+        "/",
+        "[",
+        "]",
+        "{",
+        "}",
+        '"',
+        "'",
+        "\\",
+        "+",
+        "-",
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
     ]
 
     @pytest.mark.parametrize("illegal_char", ILLEGAL_CHARACTERS)
@@ -151,12 +179,12 @@ class TestPBTLLexer:
             self._tokenize_to_types(test_input)
 
         error_message = str(exc_info.value)
-        assert "Illegal character" in error_message, (
-            f"Expected 'Illegal character' in error message, got: {error_message}"
-        )
-        assert illegal_char in error_message, (
-            f"Expected illegal character '{illegal_char}' in error message"
-        )
+        assert (
+            "Illegal character" in error_message
+        ), f"Expected 'Illegal character' in error message, got: {error_message}"
+        assert (
+            illegal_char in error_message
+        ), f"Expected illegal character '{illegal_char}' in error message"
 
     def test_whitespace_handling(self):
         """Test lexer properly ignores various whitespace characters."""
@@ -186,4 +214,6 @@ class TestPBTLLexer:
 
         for input_text, expected in adjacent_cases:
             actual = self._tokenize_to_types(input_text)
-            assert actual == expected, f"Adjacent tokenization failed for: '{input_text}'"
+            assert (
+                actual == expected
+            ), f"Adjacent tokenization failed for: '{input_text}'"

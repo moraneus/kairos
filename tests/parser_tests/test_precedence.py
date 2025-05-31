@@ -36,42 +36,56 @@ class TestPBTLPrecedence:
         # Basic precedence: AND vs OR (AND binds tighter)
         ("a | b & c", Or(Literal("a"), And(Literal("b"), Literal("c")))),
         ("a & b | c", Or(And(Literal("a"), Literal("b")), Literal("c"))),
-        ("a | b & c | d", Or(Or(Literal("a"), And(Literal("b"), Literal("c"))), Literal("d"))),
-
+        (
+            "a | b & c | d",
+            Or(Or(Literal("a"), And(Literal("b"), Literal("c"))), Literal("d")),
+        ),
         # Unary NOT precedence (NOT binds tightest)
         ("!a & b", And(Not(Literal("a")), Literal("b"))),
         ("!a & b | c", Or(And(Not(Literal("a")), Literal("b")), Literal("c"))),
         ("a | !b & c", Or(Literal("a"), And(Not(Literal("b")), Literal("c")))),
         ("!a | b & !c", Or(Not(Literal("a")), And(Literal("b"), Not(Literal("c"))))),
-        ("!a & !b | !c", Or(And(Not(Literal("a")), Not(Literal("b"))), Not(Literal("c")))),
-
+        (
+            "!a & !b | !c",
+            Or(And(Not(Literal("a")), Not(Literal("b"))), Not(Literal("c"))),
+        ),
         # Parentheses overriding precedence
         ("a & (b | c)", And(Literal("a"), Or(Literal("b"), Literal("c")))),
         ("(a | b) & c", And(Or(Literal("a"), Literal("b")), Literal("c"))),
         ("!(a | b) & c", And(Not(Or(Literal("a"), Literal("b"))), Literal("c"))),
-        ("a & (b | (c & !d))", And(Literal("a"), Or(Literal("b"), And(Literal("c"), Not(Literal("d")))))),
-
+        (
+            "a & (b | (c & !d))",
+            And(Literal("a"), Or(Literal("b"), And(Literal("c"), Not(Literal("d"))))),
+        ),
         # Associativity: left-associative for AND/OR
         ("a & b & c", And(And(Literal("a"), Literal("b")), Literal("c"))),
         ("a | b | c", Or(Or(Literal("a"), Literal("b")), Literal("c"))),
-
         # NOT is right-associative
         ("!!!p", Not(Not(Not(Literal("p"))))),
-
         # Complex chains testing precedence and associativity
-        ("a & b | c & d | e", Or(Or(And(Literal("a"), Literal("b")), And(Literal("c"), Literal("d"))), Literal("e"))),
-
+        (
+            "a & b | c & d | e",
+            Or(
+                Or(And(Literal("a"), Literal("b")), And(Literal("c"), Literal("d"))),
+                Literal("e"),
+            ),
+        ),
         # EP operator precedence
         ("!EP(p)", Not(EP(Literal("p")))),
         ("EP(p) & q", And(EP(Literal("p")), Literal("q"))),
         ("EP(p | q & r)", EP(Or(Literal("p"), And(Literal("q"), Literal("r"))))),
         ("EP((p | q) & r)", EP(And(Or(Literal("p"), Literal("q")), Literal("r")))),
         ("(EP(p) | q) & r", And(Or(EP(Literal("p")), Literal("q")), Literal("r"))),
-
         # Boolean constants in precedence
-        ("true | false & true", Or(Literal("true"), And(Literal("false"), Literal("true")))),
+        (
+            "true | false & true",
+            Or(Literal("true"), And(Literal("false"), Literal("true"))),
+        ),
         ("!true & false", And(Not(Literal("true")), Literal("false"))),
-        ("EP(true & p | false)", EP(Or(And(Literal("true"), Literal("p")), Literal("false")))),
+        (
+            "EP(true & p | false)",
+            EP(Or(And(Literal("true"), Literal("p")), Literal("false"))),
+        ),
     ]
 
     @pytest.mark.parametrize("input_formula, expected_ast", PRECEDENCE_TEST_CASES)
@@ -101,7 +115,10 @@ class TestPBTLPrecedence:
         test_cases = [
             ("p | q & r", Or(Literal("p"), And(Literal("q"), Literal("r")))),
             ("p & q | r", Or(And(Literal("p"), Literal("q")), Literal("r"))),
-            ("p | q & r | s", Or(Or(Literal("p"), And(Literal("q"), Literal("r"))), Literal("s"))),
+            (
+                "p | q & r | s",
+                Or(Or(Literal("p"), And(Literal("q"), Literal("r"))), Literal("s")),
+            ),
         ]
 
         for formula, expected in test_cases:
@@ -141,12 +158,18 @@ class TestPBTLPrecedence:
         """Test that AND and OR are left-associative."""
         and_cases = [
             ("a & b & c", And(And(Literal("a"), Literal("b")), Literal("c"))),
-            ("a & b & c & d", And(And(And(Literal("a"), Literal("b")), Literal("c")), Literal("d"))),
+            (
+                "a & b & c & d",
+                And(And(And(Literal("a"), Literal("b")), Literal("c")), Literal("d")),
+            ),
         ]
 
         or_cases = [
             ("a | b | c", Or(Or(Literal("a"), Literal("b")), Literal("c"))),
-            ("a | b | c | d", Or(Or(Or(Literal("a"), Literal("b")), Literal("c")), Literal("d"))),
+            (
+                "a | b | c | d",
+                Or(Or(Or(Literal("a"), Literal("b")), Literal("c")), Literal("d")),
+            ),
         ]
 
         for formula, expected in and_cases + or_cases:
@@ -187,11 +210,19 @@ class TestPBTLPrecedence:
             # Mix of all operators with precedence
             ("!p & q | r", Or(And(Not(Literal("p")), Literal("q")), Literal("r"))),
             ("p | !q & r", Or(Literal("p"), And(Not(Literal("q")), Literal("r")))),
-            ("EP(p) & !q | r", Or(And(EP(Literal("p")), Not(Literal("q"))), Literal("r"))),
-
+            (
+                "EP(p) & !q | r",
+                Or(And(EP(Literal("p")), Not(Literal("q"))), Literal("r")),
+            ),
             # Nested EP with complex expressions
-            ("EP(!p & q | r)", EP(Or(And(Not(Literal("p")), Literal("q")), Literal("r")))),
-            ("!EP(p & q) | r", Or(Not(EP(And(Literal("p"), Literal("q")))), Literal("r"))),
+            (
+                "EP(!p & q | r)",
+                EP(Or(And(Not(Literal("p")), Literal("q")), Literal("r"))),
+            ),
+            (
+                "!EP(p & q) | r",
+                Or(Not(EP(And(Literal("p"), Literal("q")))), Literal("r")),
+            ),
         ]
 
         for formula, expected in complex_cases:
@@ -202,7 +233,10 @@ class TestPBTLPrecedence:
     def test_precedence_with_boolean_constants(self):
         """Test precedence handling with boolean constants."""
         test_cases = [
-            ("true & false | true", Or(And(Literal("true"), Literal("false")), Literal("true"))),
+            (
+                "true & false | true",
+                Or(And(Literal("true"), Literal("false")), Literal("true")),
+            ),
             ("!false & true", And(Not(Literal("false")), Literal("true"))),
             ("EP(true) | false", Or(EP(Literal("true")), Literal("false"))),
         ]
@@ -210,14 +244,25 @@ class TestPBTLPrecedence:
         for formula, expected in test_cases:
             self.logger.debug(f"Testing precedence with constants: {formula}")
             actual = parse(formula)
-            assert actual == expected, f"Precedence with constants failed for: {formula}"
+            assert (
+                actual == expected
+            ), f"Precedence with constants failed for: {formula}"
 
     def test_deeply_nested_precedence(self):
         """Test precedence in deeply nested expressions."""
         nested_cases = [
-            ("a & (b | (c & d))", And(Literal("a"), Or(Literal("b"), And(Literal("c"), Literal("d"))))),
-            ("(a | b) & (c | d)", And(Or(Literal("a"), Literal("b")), Or(Literal("c"), Literal("d")))),
-            ("EP(a & (b | c)) | d", Or(EP(And(Literal("a"), Or(Literal("b"), Literal("c")))), Literal("d"))),
+            (
+                "a & (b | (c & d))",
+                And(Literal("a"), Or(Literal("b"), And(Literal("c"), Literal("d")))),
+            ),
+            (
+                "(a | b) & (c | d)",
+                And(Or(Literal("a"), Literal("b")), Or(Literal("c"), Literal("d"))),
+            ),
+            (
+                "EP(a & (b | c)) | d",
+                Or(EP(And(Literal("a"), Or(Literal("b"), Literal("c")))), Literal("d")),
+            ),
         ]
 
         for formula, expected in nested_cases:

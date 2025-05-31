@@ -30,28 +30,23 @@ class TestPBTLParserSyntax:
         "(p & q)",
         "EP(r)",
         "(EP(p) | EP(!q))",
-
         # Complex nesting and precedence
         "EP((p & q) | !r)",
         "!(p | EP(q))",
         "EP(EP(EP(p)))",
         "(!p | !q)",
         "(p & (q | (r & (s | t))))",
-
         # Boolean constants
         "EP(true)",
         "EP(false)",
         "(true & false)",
-
         # Whitespace handling
         "  (p | q)  ",
         "\t EP(p) \n",
-
         # Complex identifiers
         "EP(id_with_EP_in_it)",
         "variable_123",
         "_underscore_var",
-
         # Multiple parenthesized groups
         "(a | b) & (c | !d)",
         "EP(p | q) & EP(r | s)",
@@ -117,7 +112,6 @@ class TestPBTLParserSyntax:
         ("a | (b & c", "Unclosed parenthesis in nested expression"),
         ("a | b) & c", "Unopened parenthesis"),
         ("()", "Empty expression within parentheses"),
-
         # Operator errors
         ("p | | q", "Double operator"),
         ("p &", "Trailing operator"),
@@ -127,19 +121,16 @@ class TestPBTLParserSyntax:
         ("!&p", "Invalid operator sequence"),
         ("p | q &", "Trailing operator after expression"),
         ("!(p q)", "Missing operator inside negated group"),
-
         # EP syntax errors
         ("EP p", "EP keyword without parentheses"),
         ("EP()", "EP with empty argument"),
         ("EP(!)", "Operator cannot be EP operand"),
-
         # Invalid keywords/tokens
         ("p AND q", "Invalid keyword AND instead of &"),
         ("p OR q", "Invalid keyword OR instead of |"),
         ("NOT p", "Invalid keyword NOT instead of !"),
         ("p; q", "Illegal character as separator"),
         ("p @ q", "Illegal character in expression"),
-
         # Empty/whitespace errors
         ("", "Empty input string"),
         ("     ", "Whitespace only input"),
@@ -173,7 +164,9 @@ class TestPBTLParserSyntax:
             invalid_input: Invalid PBTL syntax string
             description: Description of the syntax error
         """
-        self.logger.debug(f"Testing DLNF parse error for: '{invalid_input}' ({description})")
+        self.logger.debug(
+            f"Testing DLNF parse error for: '{invalid_input}' ({description})"
+        )
 
         with pytest.raises(ParseError) as exc_info:
             parse_and_dlnf(invalid_input)
@@ -201,9 +194,10 @@ class TestPBTLParserSyntax:
             error_message = str(exc_info.value).lower()
 
             # Check that error message contains expected content
-            assert any(content.lower() in error_message for content in [expected_content, "error", "syntax"]), (
-                f"Error message should contain meaningful information: {error_message}"
-            )
+            assert any(
+                content.lower() in error_message
+                for content in [expected_content, "error", "syntax"]
+            ), f"Error message should contain meaningful information: {error_message}"
 
     def test_nested_parentheses_validation(self):
         """Test validation of complex nested parentheses structures."""
@@ -248,6 +242,6 @@ class TestPBTLParserSyntax:
             expected_ast = parse(expected_structure)
 
             # The parsed formula should have the same structure as explicitly parenthesized version
-            assert str(parsed_ast) == str(expected_ast), (
-                f"Precedence handling incorrect for: {input_formula}"
-            )
+            assert str(parsed_ast) == str(
+                expected_ast
+            ), f"Precedence handling incorrect for: {input_formula}"
