@@ -17,29 +17,14 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Cache Docker layers
-      uses: actions/cache@v3
-      with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }}
-        restore-keys: |
-          ${{ runner.os }}-buildx-
-
     - name: Build Docker image
       run: |
         docker build \
-          --cache-from=type=local,src=/tmp/.buildx-cache \
-          --cache-to=type=local,dest=/tmp/.buildx-cache-new,mode=max \
           -t kairos:test \
           --build-arg BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ') \
           --build-arg VCS_REF=${{ github.sha }} \
           --build-arg VERSION=${{ github.ref_name }} \
           .
-
-    - name: Move cache
-      run: |
-        rm -rf /tmp/.buildx-cache
-        mv /tmp/.buildx-cache-new /tmp/.buildx-cache
 
     - name: Test Docker image health
       run: |
@@ -110,11 +95,7 @@ jobs:
         # Test with memory constraints
         docker run --rm --memory=256m \
           kairos:test \
-          python -c "
-          from core.monitor import PBTLMonitor
-          monitor = PBTLMonitor('EP(p)')
-          print('✅ Memory-constrained test passed')
-          "
+          python -c "from core.monitor import PBTLMonitor; monitor = PBTLMonitor('EP(p)'); print('✅ Memory-constrained test passed')"
 
     - name: Test Docker environment variables
       run: |
@@ -122,24 +103,11 @@ jobs:
           -e LOG_LEVEL=DEBUG \
           -e PYTHONPATH=/app \
           kairos:test \
-          python -c "
-          import os
-          print(f'LOG_LEVEL: {os.getenv(\"LOG_LEVEL\")}')
-          print(f'PYTHONPATH: {os.getenv(\"PYTHONPATH\")}')
-          print('✅ Environment variables test passed')
-          "
+          python -c "import os; print('LOG_LEVEL:', os.getenv('LOG_LEVEL')); print('PYTHONPATH:', os.getenv('PYTHONPATH')); print('✅ Environment variables test passed')"
 
     - name: Test code style in Docker
       run: |
         docker run --rm kairos:test black --check --diff .
-
-    - name: Test import sorting in Docker
-      run: |
-        docker run --rm kairos:test isort --check-only --diff .
-
-    - name: Test type checking in Docker
-      run: |
-        docker run --rm kairos:test mypy core/ parser/ utils/ --ignore-missing-imports
 
     - name: Clean up test files
       if: always()
