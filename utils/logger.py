@@ -106,12 +106,12 @@ class PBTLLogger:
         status_str = ", ".join(f"{k}={v}" for k, v in status.items())
         self.debug(f"    🔍 {case_type} DEBUG: {status_str}")
 
-    def frontier_analysis(self, description: str, frontier: str, vc: str | None = None):
+    def frontier_analysis(self, description: str, frontier: str, vc: Optional[str] = None):
         """Log frontier analysis."""
         vc_str = f" (VC: {vc})" if vc else ""
         self.debug(f"      {description}: {frontier}{vc_str}")
 
-    def constraint_check(self, n_id: int, n_vc: str, m_vc: str, result: str | None = None):
+    def constraint_check(self, n_id: int, n_vc: str, m_vc: str, result: Optional[str] = None):
         """Log N-constraint checking."""
         if result:
             self.debug(f"      Checking N{n_id}: {n_vc} ≤ {m_vc} → {result}")
@@ -208,7 +208,7 @@ def configure_logging(verbose: bool = False, debug: bool = False):
 
 
 # Convenience functions for common logging patterns
-def log_monitor_header(property_text: str, verdict: str, initial_frontier: str | None = None):
+def log_monitor_header(property_text: str, verdict: str, initial_frontier: Optional[str] = None):
     """Log monitor initialization header."""
     get_logger().monitor_start(property_text, verdict, initial_frontier)
 
