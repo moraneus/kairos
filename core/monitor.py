@@ -382,7 +382,37 @@ class PBTLMonitor:
         # Update all disjuncts
         self._update_disjuncts(event, new_frontiers)
         self._update_global_verdict()
+
+        # Cleanup irrelevant events
+        # self._cleanup_irrelevant_events()
+
         self._print_event_result(event, new_frontiers)
+
+    def _cleanup_irrelevant_events(self) -> None:
+        """Remove events that cannot contribute to future verdicts."""
+        logger = get_logger()
+
+        # Events to remove
+        events_to_remove = set()
+
+        for disjunct in self.disjuncts:
+            if disjunct.verdict.is_conclusive():
+                continue
+
+            # For each M-vector in the disjunct
+            for proc, event in disjunct.m_vector.items():
+                # Check if this event can be superseded
+                for frontier in self.current_frontiers:
+                    frontier_dict = frontier.events_dict
+                    if proc in frontier_dict:
+                        newer_event = frontier_dict[proc]
+                        # If newer event exists and event is older
+                        if event.vc < newer_event.vc:
+                            events_to_remove.add(event)
+
+        # Remove from internal tracking (implementation would depend on data structures)
+        if events_to_remove:
+            logger.debug(f"Cleaned up {len(events_to_remove)} irrelevant events")
 
     def _update_disjuncts(self, event: Event, frontiers: Set[Frontier]) -> None:
         """Update all disjunct states with new frontiers.

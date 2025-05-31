@@ -101,7 +101,7 @@ isort>=5.0                 # Import sorting
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/kairos.git
+git clone https://github.com/moraneus/kairos.git
 cd kairos
 ```
 
@@ -125,7 +125,7 @@ python -m pytest tests/ -v
 
 ```bash
 # Fork and clone the repository
-git clone https://github.com/yourusername/kairos.git
+git clone https://github.com/moraneus/kairos.git
 cd kairos
 ```
 
@@ -143,26 +143,6 @@ python -m pytest tests/ -v
 
 # Run with coverage
 python -m pytest tests/ --cov=core --cov=parser --cov=utils --cov-report=html
-```
-
-### Code Style
-
-We use:
-- **Black** for code formatting
-- **isort** for import sorting  
-- **mypy** for type checking
-- **pytest** for testing
-
-```bash
-# Format code
-black .
-isort .
-
-# Type checking
-mypy core/ parser/ utils/
-
-# Run all checks
-pre-commit run --all-files
 ```
 
 ## Quick Start
@@ -228,48 +208,48 @@ pa_int15@PA:[PA:5, PB:0, PC:0, PD:2, PV:4] → frontiers=['⟨PA:pa_int15, PB:pb
 ```
 
 ## PBTL Logic Specification
-### Grammar
+### Grammar (DLNF Structure)
 ```text
-<formula> ::= <atom>
-           | <formula> & <formula>    // conjunction
-           | <formula> | <formula>    // disjunction  
-           | ! <formula>              // negation
-           | EP(<formula>)            // exists in past
-           | ( <formula> )            // grouping
-           | TRUE | FALSE             // boolean constants
+<formula> ::= <ep_formula>
+           | <formula> | <ep_formula>    // disjunction of EP formulas
 
-<atom> ::= <identifier>               // propositional variable
+<ep_formula> ::= EP(<ep_operand>)
+
+<ep_operand> ::= <conjunct>
+              | <ep_operand> & <conjunct>  // conjunction inside EP
+
+<conjunct> ::= <p_block>                  // P-type: nested EP
+            | <m_literal>                 // M-type: atomic proposition
+            | <n_block>                   // N-type: negated EP
+
+<p_block> ::= EP(<ep_operand>)           // Positive EP subformula
+
+<m_literal> ::= <atom>                   // Atomic propositions
+             | ! <atom>                  // Negated atomic propositions
+
+<n_block> ::= ! EP(<ep_operand>)         // Negated EP subformula
+
+<atom> ::= <identifier> | TRUE | FALSE   // Propositional variables and constants
 ```
 
 ### Operators and Semantics
-Kairos supports Past-Based Temporal Logic (PBTL) with the following operators:
+Kairos supports Past-Based Temporal Logic (PBTL) in DLNF form with the following structure:
 
-#### Boolean Operators
+#### DLNF Requirements
 
-- `TRUE`, `FALSE`: Boolean constants for truth and falsehood
-- `p & q`: Conjunction - true when both p and q are true
-- `p | q`: Disjunction - true when at least one of p or q is true
-- `! p`: Negation - true when p is false
+- **Top level**: Only disjunctions of EP formulas
+- **Inside EP**: Only conjunctions of P-blocks, M-literals, and N-blocks
+- **No OR operators inside EP expressions**
+
+#### Component Types
+
+- **P-blocks**: `EP(φ)` - Positive EP subformulas
+- **M-literals**: `atom` or `!atom` - Atomic propositions (minterm components)
+- **N-blocks**: `!EP(φ)` - Negated EP subformulas
 
 #### Temporal Operators
 
-- `EP(φ)`: "Exists in Past" - true if formula φ was satisfied at some point in the past along at least one execution path
-
-#### Operator Precedence (highest to lowest)
-1. `()` - parentheses for grouping
-2. `EP(...)` - temporal operator
-3. `!` - negation (right-associative)
-4. `&` - conjunction (left-associative)
-5. `|` - disjunction (left-associative)
-
-This follows standard mathematical and logical conventions where:
-
-- Parentheses have the highest precedence (they override everything else).
-- Function-like operators `(EP)` come next.
-- Unary operators (negation) come before binary operators.
-- Conjunction (AND) binds tighter than disjunction (OR).
-
-This means that `!p & q | r` would be parsed as `((!p) & q) | r`, and `EP(p | q) & r` would be parsed as `(EP(p | q)) & r`.
+`EP(φ)`: "Exists in Past" - true if formula φ was satisfied at some point in the past along at least one execution path
 
 #### Semantic Notes
 
@@ -280,17 +260,23 @@ This means that `!p & q | r` would be parsed as `((!p) & q) | r`, and `EP(p | q)
 
 #### Example Formulas
 ```text
-# Simple past existence  
-EP(ready)                              # "ready" occurred at some point in the past
+# Simple EP with M-literal
+EP(ready)
 
-# Conjunction of past events
-EP(EP(init) & EP(ready))               # Both "init" and "ready" occurred in the past
+# EP with conjunction of M-literals  
+EP(p & q & !r)
 
-# Safety properties
-EP(EP(success) & !EP(error))          # Success occurred but no error ever occurred
+# EP with P-block and M-literals
+EP(EP(init) & ready & !error)
 
-# Complex temporal relationships  
-EP((EP(request) & EP(response)) | EP(timeout))  # Either request-response completed or timeout occurred
+# EP with P-block, M-literals, and N-block
+EP(EP(request) & response & !EP(timeout))
+
+# Disjunction of EP formulas
+EP(p) | EP(q)
+
+# Complex disjunction
+EP(EP(prepare) & commit) | EP(abort)
 ```
 
 ## Trace File Format
@@ -419,37 +405,6 @@ docker run --rm -e LOG_LEVEL=DEBUG -v $(pwd):/workspace kairos:latest \
 docker run --rm -e PYTHONPATH=/workspace/custom -v $(pwd):/workspace kairos:latest \
  python run_monitor.py -p /workspace/property.pbtl -t /workspace/trace.csv
  ```
-
-## Documentation
-
-### PBTL Formula Syntax
-
-Kairos supports the following PBTL operators:
-- `EP(φ)`           - "φ held at some point in the past"
-- `φ & ψ`           - Conjunction
-- `φ | ψ`           - Disjunction
-- `!φ`              - Negation
-- `true, false`     - Boolean constants
-- `p, q, ready`     - Propositional variables
-
-#### Example Formulas
-
-```bash
-# Simple past existence
-EP(ready)
-
-# Conjunction of past events
-EP(EP(init) & EP(ready) & EP(confirmed))
-
-# Avoiding bad states
-EP(EP(success) & !EP(error))
-
-# Complex disjunctive properties
-EP((EP(path1) & EP(result1)) | (EP(path2) & EP(result2)))
-
-# Temporal ordering constraints
-EP(EP(request) & EP(response) & !EP(timeout))
-```
 
 ## Examples
 
