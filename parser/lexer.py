@@ -1,49 +1,93 @@
 # parser/lexer.py
+# This file is part of Kairos - A PBTL Runtime Verification
+#
+# Lexical analyzer for PBTL formula tokenization using SLY
 
-"""
-Lexer for PBTL concrete syntax, built with SLY.
+"""Lexical analyzer for PBTL formula strings.
 
-This lexer identifies tokens for the PBTL language. It correctly distinguishes
-between reserved keywords (EP, true, false) and generic identifiers, and
-raises an error for any illegal characters.
+This module implements tokenization of Past-Based Temporal Logic formulas,
+breaking input strings into tokens for parser consumption. The lexer handles
+operator recognition, keyword distinction, and identifier processing while
+providing meaningful error messages for invalid characters.
+
+Supported Tokens:
+- Operators: !, &, |, (, )
+- Keywords: EP, true, false
+- Identifiers: propositional variables
+- Whitespace: ignored during tokenization
 """
 
 from sly import Lexer
+from utils.logger import get_logger
 
 
 class PBTLLexer(Lexer):
-    # Set of token names. These are the valid types a token can have.
+    """SLY-based lexer for PBTL formula tokenization.
+
+    Transforms input formula strings into token sequences for parsing.
+    Distinguishes between reserved keywords and user-defined identifiers
+    while handling operator precedence through token classification.
+
+    Attributes:
+        tokens: Set of valid token types
+        ignore: Characters to skip during tokenization
+        ID: Identifier pattern with keyword mapping
+    """
+
+    # Valid token types for parser recognition
     tokens = {
-        "EP", "TRUE", "FALSE", "ID",
-        "NOT", "AND", "OR", "LPAREN", "RPAREN",
+        "EP",
+        "TRUE",
+        "FALSE",
+        "ID",
+        "NOT",
+        "AND",
+        "OR",
+        "LPAREN",
+        "RPAREN",
     }
 
-    # Characters to be ignored by the lexer (e.g., whitespace, tabs, newlines).
+    # Whitespace characters to ignore
     ignore = " \t\r\n"
 
-    # --- Operators and Punctuation (defined by simple regular expressions) ---
-    NOT    = r"!"
-    AND    = r"&"
-    OR     = r"\|"
+    # Operator and punctuation tokens
+    NOT = r"!"
+    AND = r"&"
+    OR = r"\|"
     LPAREN = r"\("
     RPAREN = r"\)"
 
-    # --- Identifiers and Keywords ---
-    # The 'ID' token is defined first using a general regex for identifiers.
+    # Identifier pattern: starts with letter/underscore, followed by alphanumerics/underscores
     ID = r"[a-zA-Z_][a-zA-Z0-9_]*"
 
-    # The SLY lexer provides a special dictionary on the ID token to handle
-    # reserved keywords. If a matched ID's text is a key in this dictionary,
-    # its token type is reassigned to the corresponding value.
-    # The values must be the string names of the tokens.
-    ID['EP'] = "EP"
-    ID['true'] = "TRUE"
-    ID['false'] = "FALSE"
+    # Keyword mapping: reassign token types for reserved words
+    ID["EP"] = "EP"
+    ID["true"] = "TRUE"
+    ID["false"] = "FALSE"
 
     def error(self, t):
+        """Handle illegal characters during tokenization.
+
+        Called automatically when encountering characters that don't match
+        any defined token patterns. Advances past the problematic character
+        and raises an informative error.
+
+        Args:
+            t: SLY token object containing error context
+
+        Raises:
+            ValueError: Always raised with character and position information
         """
-        Handles any character that doesn't match a defined token.
-        This method is called by SLY when it encounters an illegal character.
-        """
+        logger = get_logger()
+
+        illegal_char = t.value[0]
+        error_pos = self.index
+
+        logger.debug(f"Illegal character '{illegal_char}' at position {error_pos}")
+
+        # Skip the illegal character
         self.index += 1
-        raise ValueError(f"Illegal character {t.value!r} at position {self.index}")
+
+        raise ValueError(
+            f"Illegal character '{illegal_char}' encountered at position {error_pos}"
+        )

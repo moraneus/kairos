@@ -1,113 +1,189 @@
-# tests/parser_test/test_lexer_tokens.py
+# tests/parser_tests/test_lexer_tokens.py
+# This file is part of Kairos - A PBTL Runtime Verification
+#
+# Test suite for PBTL lexer tokenization and error handling
 
+"""Test suite for PBTL lexer functionality.
 
+This module tests the lexical analysis phase of PBTL formula parsing,
+verifying correct tokenization of valid syntax and proper error handling
+for invalid characters.
 """
-Tests the behavior of the PBTL lexer.
 
-This test suite verifies two key functions of the lexer:
-
-1.  **Correct Tokenization**: Ensures that valid sequences of characters are
-    correctly tagged with their specific token types (e.g., 'EP' is a keyword,
-    'p' is an identifier, '!' is an operator). It pays special attention to
-    distinguishing keywords from identifiers.
-
-2.  **Error Handling**: Ensures that any character not part of the defined
-    PBTL language syntax causes the lexer to raise a `ValueError`.
-"""
 import pytest
 from parser.lexer import PBTLLexer
-
-# Instantiate the lexer once for all tests in this module.
-lexer = PBTLLexer()
+from utils.logger import get_logger
 
 
-def _get_token_types(text: str):
-    """A helper function to tokenize a string and return only the token types."""
-    return [tok.type for tok in lexer.tokenize(text)]
+class TestPBTLLexer:
+    """Test cases for PBTL lexer tokenization and error handling."""
 
+    def setup_method(self):
+        """Initialize lexer for each test method."""
+        self.lexer = PBTLLexer()
+        self.logger = get_logger()
 
-# A comprehensive list of tokenization test cases.
-TOKENIZATION_SCENARIOS = [
-    # --- Basic Keyword and Identifier Tests ---
-    # A standard expression with an identifier.
-    ("EP(foo)", ["EP", "LPAREN", "ID", "RPAREN"]),
-    # The 'true' keyword must be identified as TRUE, not a generic ID.
-    ("true", ["TRUE"]),
-    # The 'false' keyword must be identified as FALSE.
-    ("false", ["FALSE"]),
-    # A standard identifier should be recognized as ID.
-    ("a_valid_identifier", ["ID"]),
+    def _tokenize_to_types(self, text: str) -> list[str]:
+        """Extract token types from input text.
 
-    # --- Keyword vs. Identifier Ambiguity Tests ---
-    # The lexer must be case-sensitive; 'ep' is an ID, not the EP keyword.
-    ("ep", ["ID"]),
-    # Case-sensitivity also applies to boolean constants.
-    ("True", ["ID"]),
-    # When a keyword is a prefix of an identifier, it should be one ID token.
-    ("EPtrue", ["ID"]),
-    # A keyword as a suffix should also be treated as part of the identifier.
-    ("falseEP", ["ID"]),
-    # An identifier can contain a keyword substring.
-    ("id_containing_true_keyword", ["ID"]),
-    # Underscores adjacent to keywords are part of the identifier.
-    ("EP_is_an_id", ["ID"]),
+        Args:
+            text: Input string to tokenize
 
-    # --- Operator and Punctuation Tests ---
-    # All single-character operators and parentheses.
-    ("! & | ( )", ["NOT", "AND", "OR", "LPAREN", "RPAREN"]),
-    # An expression without whitespace to test token boundaries.
-    ("p&q|!r", ["ID", "AND", "ID", "OR", "NOT", "ID"]),
-    # Parentheses are distinct tokens.
-    ("()", ["LPAREN", "RPAREN"]),
+        Returns:
+            List of token type strings
+        """
+        self.logger.debug(f"Tokenizing: '{text}'")
+        token_types = [token.type for token in self.lexer.tokenize(text)]
+        self.logger.debug(f"Token types: {token_types}")
+        return token_types
 
-    # --- Whitespace and Combination Tests ---
-    # The lexer should correctly ignore various forms of whitespace.
-    (" \t EP \n (p) ", ["EP", "LPAREN", "ID", "RPAREN"]),
-    # A complex expression combining keywords, identifiers, and operators.
-    ("EP( an_id | true ) & !false", [
-        "EP", "LPAREN", "ID", "OR", "TRUE", "RPAREN",
-        "AND", "NOT", "FALSE"
-    ]),
-]
+    # Test cases for valid tokenization scenarios
+    VALID_TOKENIZATION_CASES = [
+        # Basic keyword and identifier recognition
+        ("EP(foo)", ["EP", "LPAREN", "ID", "RPAREN"]),
+        ("true", ["TRUE"]),
+        ("false", ["FALSE"]),
+        ("a_valid_identifier", ["ID"]),
 
+        # Case sensitivity verification
+        ("ep", ["ID"]),
+        ("True", ["ID"]),
+        ("False", ["ID"]),
 
-@pytest.mark.parametrize("snippet, expected_types", TOKENIZATION_SCENARIOS)
-def test_tokenization_scenarios(snippet, expected_types, capsys):
-    """
-    Verifies that the lexer correctly tokenizes various valid syntax snippets.
-    """
-    actual_types = _get_token_types(snippet)
+        # Keyword-identifier boundary cases
+        ("EPtrue", ["ID"]),
+        ("falseEP", ["ID"]),
+        ("id_containing_true_keyword", ["ID"]),
+        ("EP_is_an_id", ["ID"]),
 
-    print(f"\nInput snippet: '{snippet}'")
-    print(f"Expected types: {expected_types}")
-    print(f"Actual types  : {actual_types}")
+        # Operator and punctuation tokenization
+        ("! & | ( )", ["NOT", "AND", "OR", "LPAREN", "RPAREN"]),
+        ("p&q|!r", ["ID", "AND", "ID", "OR", "NOT", "ID"]),
+        ("()", ["LPAREN", "RPAREN"]),
 
-    assert actual_types == expected_types
-    _ = capsys.readouterr()
+        # Whitespace handling
+        (" \t EP \n (p) ", ["EP", "LPAREN", "ID", "RPAREN"]),
 
+        # Complex expressions
+        (
+            "EP( an_id | true ) & !false",
+            ["EP", "LPAREN", "ID", "OR", "TRUE", "RPAREN", "AND", "NOT", "FALSE"],
+        ),
+    ]
 
-# A list of single illegal characters that should cause the lexer to fail.
-ILLEGAL_CHARACTERS = [
-    "@", "#", "$", "%", "^", "*", "=", "`", "~", "?",
-    ":", ";", ".", ",", "<", ">", "/", "[", "]", "{", "}",
-]
+    @pytest.mark.parametrize("input_text, expected_types", VALID_TOKENIZATION_CASES)
+    def test_valid_tokenization(self, input_text, expected_types):
+        """Test lexer correctly tokenizes valid PBTL syntax.
 
+        Args:
+            input_text: Valid PBTL syntax string
+            expected_types: Expected sequence of token types
+        """
+        actual_types = self._tokenize_to_types(input_text)
 
-@pytest.mark.parametrize("illegal_char", ILLEGAL_CHARACTERS)
-def test_lexer_raises_on_illegal_character(illegal_char, capsys):
-    """
-    Verifies that the lexer raises a ValueError for any character
-    that is not part of the defined language syntax.
-    """
-    # Embed the illegal character in a valid formula to test its detection.
-    formula_with_illegal_char = f"p & {illegal_char}"
+        assert actual_types == expected_types, (
+            f"Tokenization mismatch for '{input_text}':\n"
+            f"Expected: {expected_types}\n"
+            f"Actual: {actual_types}"
+        )
 
-    print(f"\nTesting illegal snippet: '{formula_with_illegal_char}'")
+    def test_keyword_recognition(self):
+        """Test proper recognition of PBTL keywords vs identifiers."""
+        keyword_cases = [
+            ("EP", ["EP"]),
+            ("true", ["TRUE"]),
+            ("false", ["FALSE"]),
+        ]
 
-    with pytest.raises(ValueError) as exc_info:
-        _get_token_types(formula_with_illegal_char)
+        for keyword, expected in keyword_cases:
+            actual = self._tokenize_to_types(keyword)
+            assert actual == expected, f"Keyword '{keyword}' not recognized correctly"
 
-    # The lexer's error method is designed to raise a ValueError.
-    print(f"Successfully caught expected error: {exc_info.value}")
-    assert "Illegal character" in str(exc_info.value)
-    _ = capsys.readouterr()
+    def test_identifier_recognition(self):
+        """Test proper recognition of various identifier patterns."""
+        identifier_cases = [
+            "simple_id",
+            "id123",
+            "_underscore_start",
+            "camelCaseId",
+            "id_with_numbers_123",
+            "very_long_identifier_name_with_underscores",
+        ]
+
+        for identifier in identifier_cases:
+            actual = self._tokenize_to_types(identifier)
+            assert actual == ["ID"], f"Identifier '{identifier}' not recognized as ID"
+
+    def test_operator_tokenization(self):
+        """Test tokenization of all PBTL operators."""
+        operator_cases = [
+            ("!", ["NOT"]),
+            ("&", ["AND"]),
+            ("|", ["OR"]),
+            ("(", ["LPAREN"]),
+            (")", ["RPAREN"]),
+        ]
+
+        for operator, expected in operator_cases:
+            actual = self._tokenize_to_types(operator)
+            assert actual == expected, f"Operator '{operator}' not tokenized correctly"
+
+    # Invalid characters that should trigger lexer errors
+    ILLEGAL_CHARACTERS = [
+        "@", "#", "$", "%", "^", "*", "=", "`", "~", "?", ":", ";",
+        ".", ",", "<", ">", "/", "[", "]", "{", "}", '"', "'", "\\",
+        "+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9"
+    ]
+
+    @pytest.mark.parametrize("illegal_char", ILLEGAL_CHARACTERS)
+    def test_illegal_character_handling(self, illegal_char):
+        """Test lexer raises ValueError for illegal characters.
+
+        Args:
+            illegal_char: Character not allowed in PBTL syntax
+        """
+        # Embed illegal character in otherwise valid formula
+        test_input = f"p & {illegal_char}"
+
+        self.logger.debug(f"Testing illegal character: '{illegal_char}'")
+
+        with pytest.raises(ValueError) as exc_info:
+            self._tokenize_to_types(test_input)
+
+        error_message = str(exc_info.value)
+        assert "Illegal character" in error_message, (
+            f"Expected 'Illegal character' in error message, got: {error_message}"
+        )
+        assert illegal_char in error_message, (
+            f"Expected illegal character '{illegal_char}' in error message"
+        )
+
+    def test_whitespace_handling(self):
+        """Test lexer properly ignores various whitespace characters."""
+        whitespace_cases = [
+            ("  EP(p)  ", ["EP", "LPAREN", "ID", "RPAREN"]),
+            ("\tEP\n(\rp\t)\n", ["EP", "LPAREN", "ID", "RPAREN"]),
+            ("EP ( p )", ["EP", "LPAREN", "ID", "RPAREN"]),
+        ]
+
+        for input_text, expected in whitespace_cases:
+            actual = self._tokenize_to_types(input_text)
+            assert actual == expected, f"Whitespace handling failed for: '{input_text}'"
+
+    def test_empty_input(self):
+        """Test lexer behavior with empty input."""
+        actual = self._tokenize_to_types("")
+        assert actual == [], "Empty input should produce no tokens"
+
+    def test_adjacent_tokens(self):
+        """Test tokenization of adjacent tokens without whitespace."""
+        adjacent_cases = [
+            ("EP(p)", ["EP", "LPAREN", "ID", "RPAREN"]),
+            ("!true", ["NOT", "TRUE"]),
+            ("p&q|r", ["ID", "AND", "ID", "OR", "ID"]),
+            ("(p|q)", ["LPAREN", "ID", "OR", "ID", "RPAREN"]),
+        ]
+
+        for input_text, expected in adjacent_cases:
+            actual = self._tokenize_to_types(input_text)
+            assert actual == expected, f"Adjacent tokenization failed for: '{input_text}'"

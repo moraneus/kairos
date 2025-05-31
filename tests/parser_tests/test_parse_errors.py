@@ -1,117 +1,253 @@
-# tests/parser_test/test_parse_errors.py
+# tests/parser_tests/test_parse_errors.py
+# This file is part of Kairos - A PBTL Runtime Verification
+#
+# Test suite for PBTL parser syntax validation and error handling
 
+"""Test suite for PBTL parser syntax validation and error handling.
+
+This module tests the parser's ability to correctly handle valid syntax
+and properly reject invalid input with appropriate error messages.
+Tests cover round-trip parsing integrity and comprehensive error detection.
 """
-Tests the parser's general syntax handling, round-trip integrity,
-and error reporting for both the basic parser and the DLNF transformer.
 
-This test suite is crucial for ensuring the parser is both robust and correct.
-It is divided into two main sections:
-
-1.  **Round-Trip Integrity**: Verifies that syntactically correct formulas can be
-    parsed into an Abstract Syntax Tree (AST), then converted back into a
-    string, and finally parsed again to yield an identical AST. This ensures
-    the string representations of the AST nodes are valid and unambiguous.
-
-2.  **Error Handling**: Verifies that any syntactically invalid input string
-    correctly and reliably raises a `ParseError`. This is tested against both
-    the simple `parse()` function and the `parse_and_dlnf()` entrypoint.
-"""
 import pytest
 from parser import parse, parse_and_dlnf, ParseError
-
-# A list of valid, representative PBTL formulas for round-trip testing.
-# This list includes simple cases, all operators, nesting, and edge cases.
-VALID_SYNTAX_CASES = [
-    # --- Basic Cases ---
-    "p",                           # Simplest case: a single literal.
-    "!q",                          # Simple negation.
-    "(p & q)",                     # Simple conjunction.
-    "EP(r)",                       # Simple temporal operator.
-    "(EP(p) | EP(!q))",            # Disjunction of temporal expressions.
-
-    # --- Complex Nesting and Precedence ---
-    "EP((p & q) | !r)",            # Mixed operators inside an EP.
-    "!(p | EP(q))",                # Negation of a compound expression.
-    "EP(EP(EP(p)))",               # Deeply nested temporal operators.
-    "(!p | !q)",                   # Disjunction of negations.
-    "(p & (q | (r & (s | t))))",   # Deeply nested logical operators.
-
-    # --- Edge Cases ---
-    "EP(true)",                    # Using a boolean constant.
-    "  (p | q)  ",                 # Handling of leading/trailing whitespace.
-    "EP(id_with_EP_in_it)",        # An identifier containing a keyword substring.
-    "(a | b) & (c | !d)",          # Combination of multiple parenthesized groups.
-]
+from utils.logger import get_logger
 
 
-@pytest.mark.parametrize("src", VALID_SYNTAX_CASES)
-def test_ast_round_trip_preserves_structure(src, capsys):
-    """Ensures parsing -> stringifying -> parsing again yields the same AST."""
-    # 1. First parse from the source string.
-    ast1 = parse(src)
-    # 2. Convert the resulting AST back to its string representation.
-    re_stringified = str(ast1)
-    # 3. Parse the stringified version to create a second AST.
-    ast2 = parse(re_stringified)
+class TestPBTLParserSyntax:
+    """Test cases for PBTL parser syntax validation and error handling."""
 
-    print(f"\nOriginal source : {src}")
-    print(f"Stringified AST : {re_stringified}")
-    print(f"Round-trip AST  : {ast2}")
+    def setup_method(self):
+        """Initialize logger for each test method."""
+        self.logger = get_logger()
 
-    # The two ASTs must be structurally identical.
-    assert ast1 == ast2, "AST structure changed after stringifying and re-parsing"
-    _ = capsys.readouterr()
+    # Valid PBTL formulas for round-trip testing
+    VALID_FORMULAS = [
+        # Basic expressions
+        "p",
+        "!q",
+        "(p & q)",
+        "EP(r)",
+        "(EP(p) | EP(!q))",
 
+        # Complex nesting and precedence
+        "EP((p & q) | !r)",
+        "!(p | EP(q))",
+        "EP(EP(EP(p)))",
+        "(!p | !q)",
+        "(p & (q | (r & (s | t))))",
 
-# A list of malformed inputs that should trigger a ParseError.
-INVALID_SYNTAX_CASES = [
-    # --- Parenthesis Errors ---
-    "EP(p",             # Mismatched parenthesis, unclosed EP.
-    "(p & q))",         # Unbalanced right parenthesis.
-    "a | (b & c",      # Unclosed parenthesis in a nested expression.
-    "a | b) & c",      # Unopened parenthesis.
-    "()",               # Empty expression within parentheses.
+        # Boolean constants
+        "EP(true)",
+        "EP(false)",
+        "(true & false)",
 
-    # --- Operator Errors ---
-    "p | | q",          # Double operator.
-    "p &",              # Trailing operator.
-    "p q",              # Missing operator between literals.
-    "p ! q",            # Infix NOT operator is invalid.
-    "p & ( | q)",      # Operator adjacent to a parenthesis.
-    "!&p",              # Nonsensical sequence of operators.
-    "p | q &",          # Trailing operator after a valid expression.
-    "!(p q)",           # Missing operator inside a negated group.
+        # Whitespace handling
+        "  (p | q)  ",
+        "\t EP(p) \n",
 
-    # --- Keyword and Token Errors ---
-    "EP p",             # EP keyword used without parentheses.
-    "EP()",             # EP with an empty argument.
-    "p AND q",          # Using invalid keyword "AND" instead of '&'.
-    "EP(!)",            # An operator cannot be an operand.
-    "p; q",             # Use of an illegal character as a separator.
+        # Complex identifiers
+        "EP(id_with_EP_in_it)",
+        "variable_123",
+        "_underscore_var",
 
-    # --- Empty/Whitespace Errors ---
-    "",                 # Empty input string.
-    "     ",            # Whitespace only.
-]
+        # Multiple parenthesized groups
+        "(a | b) & (c | !d)",
+        "EP(p | q) & EP(r | s)",
+    ]
 
+    @pytest.mark.parametrize("formula", VALID_FORMULAS)
+    def test_round_trip_parsing_integrity(self, formula):
+        """Test that parsing -> stringifying -> parsing preserves AST structure.
 
-@pytest.mark.parametrize("src", INVALID_SYNTAX_CASES)
-def test_parser_raises_on_invalid_syntax(src, capsys):
-    """Ensures that malformed input strings raise a ParseError from the base parser."""
-    print(f"\nTesting invalid input for parse(): '{src}'")
-    with pytest.raises(ParseError) as exc_info:
-        parse(src)
-    # Verifies that the specific, expected exception is caught.
-    print(f"Successfully caught expected error: {exc_info.value}")
-    _ = capsys.readouterr()
+        Args:
+            formula: Valid PBTL formula string
+        """
+        self.logger.debug(f"Testing round-trip for: {formula}")
 
+        # Parse original formula
+        original_ast = parse(formula)
 
-@pytest.mark.parametrize("src", INVALID_SYNTAX_CASES)
-def test_transformer_raises_on_invalid_syntax(src, capsys):
-    """Ensures that malformed input strings raise a ParseError from the DLNF transformer entrypoint."""
-    print(f"\nTesting invalid input for parse_and_dlnf(): '{src}'")
-    # The ParseError should be raised by the parsing step before the transformer is even called.
-    with pytest.raises(ParseError) as exc_info:
-        parse_and_dlnf(src)
-    print(f"Successfully caught expected error: {exc_info.value}")
-    _ = capsys.readouterr()
+        # Convert AST back to string representation
+        stringified = str(original_ast)
+
+        # Parse the stringified version
+        reparsed_ast = parse(stringified)
+
+        self.logger.debug(f"Original: {formula}")
+        self.logger.debug(f"Stringified: {stringified}")
+        self.logger.debug(f"Reparsed equals original: {original_ast == reparsed_ast}")
+
+        assert original_ast == reparsed_ast, (
+            f"Round-trip parsing failed:\n"
+            f"Original: {formula}\n"
+            f"Stringified: {stringified}\n"
+            f"ASTs are not equal"
+        )
+
+    @pytest.mark.parametrize("formula", VALID_FORMULAS)
+    def test_dlnf_round_trip_parsing(self, formula):
+        """Test round-trip parsing with DLNF transformation.
+
+        Args:
+            formula: Valid PBTL formula string
+        """
+        self.logger.debug(f"Testing DLNF round-trip for: {formula}")
+
+        # Transform to DLNF
+        dlnf_ast = parse_and_dlnf(formula)
+        dlnf_string = str(dlnf_ast)
+
+        # Parse the DLNF string
+        reparsed_ast = parse(dlnf_string)
+
+        assert dlnf_ast == reparsed_ast, (
+            f"DLNF round-trip failed:\n"
+            f"Original: {formula}\n"
+            f"DLNF: {dlnf_string}\n"
+            f"ASTs are not equal"
+        )
+
+    # Invalid syntax cases that should raise ParseError
+    INVALID_SYNTAX_CASES = [
+        # Parenthesis errors
+        ("EP(p", "Mismatched parenthesis - unclosed EP"),
+        ("(p & q))", "Unbalanced right parenthesis"),
+        ("a | (b & c", "Unclosed parenthesis in nested expression"),
+        ("a | b) & c", "Unopened parenthesis"),
+        ("()", "Empty expression within parentheses"),
+
+        # Operator errors
+        ("p | | q", "Double operator"),
+        ("p &", "Trailing operator"),
+        ("p q", "Missing operator between literals"),
+        ("p ! q", "Infix NOT operator invalid"),
+        ("p & ( | q)", "Operator adjacent to parenthesis"),
+        ("!&p", "Invalid operator sequence"),
+        ("p | q &", "Trailing operator after expression"),
+        ("!(p q)", "Missing operator inside negated group"),
+
+        # EP syntax errors
+        ("EP p", "EP keyword without parentheses"),
+        ("EP()", "EP with empty argument"),
+        ("EP(!)", "Operator cannot be EP operand"),
+
+        # Invalid keywords/tokens
+        ("p AND q", "Invalid keyword AND instead of &"),
+        ("p OR q", "Invalid keyword OR instead of |"),
+        ("NOT p", "Invalid keyword NOT instead of !"),
+        ("p; q", "Illegal character as separator"),
+        ("p @ q", "Illegal character in expression"),
+
+        # Empty/whitespace errors
+        ("", "Empty input string"),
+        ("     ", "Whitespace only input"),
+        ("\t\n", "Whitespace only with tabs/newlines"),
+    ]
+
+    @pytest.mark.parametrize("invalid_input, description", INVALID_SYNTAX_CASES)
+    def test_parse_error_handling(self, invalid_input, description):
+        """Test that invalid syntax raises ParseError from base parser.
+
+        Args:
+            invalid_input: Invalid PBTL syntax string
+            description: Description of the syntax error
+        """
+        self.logger.debug(f"Testing parse error for: '{invalid_input}' ({description})")
+
+        with pytest.raises(ParseError) as exc_info:
+            parse(invalid_input)
+
+        error_message = str(exc_info.value)
+        self.logger.debug(f"Parse error message: {error_message}")
+
+        # Verify we got a ParseError with some meaningful message
+        assert len(error_message) > 0, "ParseError should have non-empty message"
+
+    @pytest.mark.parametrize("invalid_input, description", INVALID_SYNTAX_CASES)
+    def test_dlnf_parse_error_handling(self, invalid_input, description):
+        """Test that invalid syntax raises ParseError from DLNF transformer.
+
+        Args:
+            invalid_input: Invalid PBTL syntax string
+            description: Description of the syntax error
+        """
+        self.logger.debug(f"Testing DLNF parse error for: '{invalid_input}' ({description})")
+
+        with pytest.raises(ParseError) as exc_info:
+            parse_and_dlnf(invalid_input)
+
+        error_message = str(exc_info.value)
+        self.logger.debug(f"DLNF parse error message: {error_message}")
+
+        # Verify we got a ParseError with some meaningful message
+        assert len(error_message) > 0, "ParseError should have non-empty message"
+
+    def test_specific_error_messages(self):
+        """Test that specific syntax errors produce informative messages."""
+        error_cases = [
+            ("EP(", "Unexpected end"),
+            ("p &", "Unexpected end"),
+            ("p | | q", "syntax error"),
+        ]
+
+        for invalid_input, expected_content in error_cases:
+            self.logger.debug(f"Testing specific error message for: '{invalid_input}'")
+
+            with pytest.raises(ParseError) as exc_info:
+                parse(invalid_input)
+
+            error_message = str(exc_info.value).lower()
+
+            # Check that error message contains expected content
+            assert any(content.lower() in error_message for content in [expected_content, "error", "syntax"]), (
+                f"Error message should contain meaningful information: {error_message}"
+            )
+
+    def test_nested_parentheses_validation(self):
+        """Test validation of complex nested parentheses structures."""
+        valid_nested = [
+            "((p))",
+            "(((p & q)))",
+            "EP((p | (q & r)))",
+            "((p | q) & (r | s))",
+        ]
+
+        invalid_nested = [
+            "((p)",
+            "(p))",
+            "EP(((p))",
+            "((p | q) & (r | s)",
+        ]
+
+        # Valid cases should parse successfully
+        for formula in valid_nested:
+            self.logger.debug(f"Testing valid nested: {formula}")
+            ast = parse(formula)
+            assert ast is not None
+
+        # Invalid cases should raise ParseError
+        for formula in invalid_nested:
+            self.logger.debug(f"Testing invalid nested: {formula}")
+            with pytest.raises(ParseError):
+                parse(formula)
+
+    def test_operator_precedence_validation(self):
+        """Test that operator precedence is handled correctly in parsing."""
+        precedence_cases = [
+            ("!p & q", "(!p & q)"),  # NOT binds tighter than AND
+            ("p & q | r", "((p & q) | r)"),  # AND binds tighter than OR
+            ("!p | q & r", "(!p | (q & r))"),  # NOT first, then AND, then OR
+        ]
+
+        for input_formula, expected_structure in precedence_cases:
+            self.logger.debug(f"Testing precedence for: {input_formula}")
+
+            parsed_ast = parse(input_formula)
+            expected_ast = parse(expected_structure)
+
+            # The parsed formula should have the same structure as explicitly parenthesized version
+            assert str(parsed_ast) == str(expected_ast), (
+                f"Precedence handling incorrect for: {input_formula}"
+            )

@@ -1,5 +1,12 @@
-# Requirements for the PBTL monitoring tool
+# requirements.txt
+# Dependencies for Kairos - Clean PBTL Runtime Verification
 
-sly>=0.4.0         # PBTL lexer/parser
-pytest>=7.0.0      # test harness
-graphviz>=0.20.1
+# Core dependencies
+sly>=0.5                # SLY parser generator for PBTL grammar
+
+# Development and testing
+pytest>=7.0.0           # Testing framework
+pytest-cov>=4.0.0       # Coverage reporting
+black>=22.0.0           # Code formatting
+mypy>=1.0.0             # Type checking
+flake8>=5.0.0           # Linting

@@ -162,4 +162,10 @@ cython_debug/
 output
 fsm_visualizations
 .DS_Store
+result-experiment-1
+result-experiment-2
+result-experiment-3
+result-experiment-4
+.mypy_cache
 
+/playground/

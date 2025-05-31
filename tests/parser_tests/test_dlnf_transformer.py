@@ -1,95 +1,193 @@
-# tests/parser_test/test_dlnf_transformer.py
+# tests/parser_tests/test_dlnf_transformer.py
+# This file is part of Kairos - A PBTL Runtime Verification
+#
+# DLNF transformation test suite for PBTL formula conversion
 
+"""Test suite for DLNF (Disjunctive Literal Normal Form) transformer.
+
+This module contains comprehensive tests for the DLNF transformation algorithm
+that converts PBTL formulas into canonical form suitable for efficient monitoring.
+Tests verify correctness, structural properties, and idempotence of transformations.
 """
-Verifies the DLNF (Disjunctive Literal Normal Form) transformation logic. [cite: 1]
 
-This test suite ensures that the DLNF transformer correctly converts any given
-PBTL formula into its corresponding Disjunctive Normal Form. It validates three
-key properties:
-
-1.  **Correctness**: The transformed Abstract Syntax Tree (AST) must be
-    structurally identical to the expected output. This is checked by comparing
-    the parsed ASTs, which is more robust than simple string comparison. [cite: 1]
-2.  **DLNF Structure**: No disjunction ('|') should appear inside the scope
-    of an 'EP' operator in the final output. [cite: 1]
-3.  **Idempotence**: Applying the transformation a second time to an already
-    transformed formula should result in no further changes. [cite: 1]
-"""
 import re
 import pytest
 from parser import parse, parse_and_dlnf
+from utils.logger import get_logger
 
-# A regular expression to find any '|' character within an EP() block.
-# This serves as a quick check for violations of the DLNF structure. [cite: 1]
-OR_IN_EP = re.compile(r"EP\([^()]*\|")
-
-# A list of test cases, where each entry is a tuple containing:
-# (input_string, expected_dlnf_string) [cite: 1]
-TESTS = [
-    # --- Basic Distribution Scenarios ---
-    # Verifies the fundamental rule: EP(A | B) -> EP(A) | EP(B). [cite: 1]
-    ("EP(p | q)", "(EP(p) | EP(q))"),
-    # An EP wrapping a conjunction should remain unchanged. [cite: 1]
-    ("EP(p & q)", "EP((p & q))"),
-    # Ensures distribution works correctly on a left-associative OR chain. [cite: 1]
-    ("EP((p | q) | r)", "((EP(p) | EP(q)) | EP(r))"),
-    # Checks distribution with a mixed AND/OR operand. [cite: 1]
-    ("EP((p & q) | r)", "(EP((p & q)) | EP(r))"),
-    # A top-level OR should be preserved after inner transformations. [cite: 1]
-    ("EP(p | q) | EP(r)", "((EP(p) | EP(q)) | EP(r))"),
-
-    # --- DNF and Distribution Scenarios ---
-    # Tests DNF conversion for an AND of two ORs inside an EP. [cite: 1]
-    ("EP((p | q) & (r | s))", "(((EP((p & r)) | EP((p & s))) | EP((q & r))) | EP((q & s)))"),
-    # A top-level AND of two transformed expressions must be converted to DNF. [cite: 1]
-    ("EP(a|b) & EP(c|d)", "(((EP(a) & EP(c)) | (EP(a) & EP(d))) | (EP(b) & EP(c))) | (EP(b) & EP(d))"),
-    # Tests distribution over a long, un-parenthesized (and thus left-associative) OR chain. [cite: 1]
-    ("EP(a | b | c | d)", "(((EP(a) | EP(b)) | EP(c)) | EP(d))"),
-    # Tests distribution over a complex, right-associative chain of ANDs and ORs. [cite: 1]
-    ("EP(a & (b | (c & (d | e))))", "((EP((a & b)) | EP(((a & c) & d))) | EP(((a & c) & e)))"),
-
-    # --- Negation and De Morgan's Law Scenarios ---
-    # Tests De Morgan's Law: !(A & B) becomes !A | !B, which is then distributed. [cite: 1]
-    ("EP(!(p & q))", "(EP(!p) | EP(!q))"),
-    # A double negation (involution) should be simplified before distribution. [cite: 1]
-    ("EP(!!(p | q))", "(EP(p) | EP(q))"),
-    # A negated EP should be treated as an atomic unit and not transformed further. [cite: 1]
-    ("EP(!(EP(p & q)))", "EP(!(EP((p & q))))"),
-    # Tests distribution on a formula containing a negated AND: !(q & r) -> !q | !r. [cite: 1]
-    ("EP(p | !(q & r))", "((EP(p) | EP(!q)) | EP(!r))"),
-    # A more complex application of De Morgan's Law with an existing negation. [cite: 1]
-    ("EP(!((p | !q) & r))", "(EP((!p & q)) | EP(!r))"),
-
-    # --- Nested and Complex Scenarios ---
-    # Verifies recursive distribution with a nested EP expression. [cite: 1]
-    ("EP(p | EP(q | r))", "((EP(p) | EP(EP(q))) | EP(EP(r)))"),
-    # Verifies a deeply nested structure with mixed operators at multiple levels. [cite: 1]
-    ("EP(a | (b & EP(c | (d & EP(e | f)))))", "(((EP(a) | EP((b & EP(c)))) | EP((b & EP((d & EP(e)))))) | EP((b & EP((d & EP(f))))))"),
-    # Verifies recursive application of De Morgan's Law on a complex, nested negation. [cite: 1]
-    ("EP(!(p & (q | EP(r | s))))", "(EP(!p) | EP(((!q & !EP(r)) & !EP(s))))"),
-]
+# Pattern to detect OR operators within EP expressions (invalid in DLNF)
+OR_IN_EP_PATTERN = re.compile(r"EP\([^()]*\|")
 
 
-@pytest.mark.parametrize("src, expected_str", TESTS)
-def test_dlnf_transformation(src, expected_str, capsys):
-    """
-    For each test case, validates the DLNF transformation for correctness,
-    proper structure, and idempotence. [cite: 1]
-    """
-    # Phase 1: Initial Transformation and Verification [cite: 1]
-    dlnf_ast = parse_and_dlnf(src)
-    dlnf_str = str(dlnf_ast)
-    expected_ast = parse(expected_str)
+class TestDLNFTransformation:
+    """Test cases for DLNF transformation correctness and properties."""
 
-    print(f"\nInput           : {src}")
-    print(f"Actual Result   : {dlnf_str}")
-    print(f"Expected Result : {expected_str}")
+    # Test cases: (input_formula, expected_dlnf_output)
+    TEST_CASES = [
+        # Basic distribution cases
+        ("EP(p | q)", "(EP(p) | EP(q))"),
+        ("EP(p & q)", "EP((p & q))"),
 
-    assert not OR_IN_EP.search(dlnf_str), "Found '|' inside an EP() expression"
-    assert dlnf_ast == expected_ast, "Transformed AST does not match expected structure"
+        # Left-associative OR chains
+        ("EP((p | q) | r)", "((EP(p) | EP(q)) | EP(r))"),
+        ("EP((p & q) | r)", "(EP((p & q)) | EP(r))"),
+        ("EP(p | q) | EP(r)", "((EP(p) | EP(q)) | EP(r))"),
+        ("EP(a | b | c | d)", "(((EP(a) | EP(b)) | EP(c)) | EP(d))"),
 
-    # Phase 2: Idempotence Verification [cite: 1]
-    idempotent_ast = parse_and_dlnf(dlnf_str)
-    print(f"Idempotent Pass : {idempotent_ast}")
-    assert idempotent_ast == dlnf_ast, "Transformation is not idempotent"
-    _ = capsys.readouterr()
+        # DNF conversion within EP
+        (
+            "EP((p | q) & (r | s))",
+            "(((EP((p & r)) | EP((p & s))) | EP((q & r))) | EP((q & s)))",
+        ),
+        (
+            "EP(a|b) & EP(c|d)",
+            "(((EP(a) & EP(c)) | (EP(a) & EP(d))) | (EP(b) & EP(c))) | (EP(b) & EP(d))",
+        ),
+
+        # Complex nested structures
+        (
+            "EP(a & (b | (c & (d | e))))",
+            "((EP((a & b)) | EP(((a & c) & d))) | EP(((a & c) & e)))",
+        ),
+
+        # Negation and De Morgan's laws
+        ("EP(!(p & q))", "(EP(!p) | EP(!q))"),
+        ("EP(!!(p | q))", "(EP(p) | EP(q))"),
+        ("EP(!(EP(p & q)))", "EP(!(EP((p & q))))"),
+        ("EP(p | !(q & r))", "((EP(p) | EP(!q)) | EP(!r))"),
+        ("EP(!((p | !q) & r))", "(EP((!p & q)) | EP(!r))"),
+
+        # Nested EP expressions
+        ("EP(p | EP(q | r))", "((EP(p) | EP(EP(q))) | EP(EP(r)))"),
+        (
+            "EP(a | (b & EP(c | (d & EP(e | f)))))",
+            "(((EP(a) | EP((b & EP(c)))) | EP((b & EP((d & EP(e)))))) | EP((b & EP((d & EP(f))))))",
+        ),
+        (
+            "EP(!(p & (q | EP(r | s))))",
+            "(EP(!p) | EP(((!q & !EP(r)) & !EP(s))))"
+        ),
+    ]
+
+    @pytest.mark.parametrize("input_formula, expected_output", TEST_CASES)
+    def test_dlnf_transformation_correctness(self, input_formula, expected_output):
+        """Test DLNF transformation produces correct output structure.
+
+        Args:
+            input_formula: Original PBTL formula string
+            expected_output: Expected DLNF transformation result
+        """
+        logger = get_logger()
+        logger.debug(f"Testing DLNF transformation: {input_formula}")
+
+        # Transform input formula to DLNF
+        transformed_ast = parse_and_dlnf(input_formula)
+        transformed_str = str(transformed_ast)
+
+        # Parse expected output for structural comparison
+        expected_ast = parse(expected_output)
+
+        logger.debug(f"Input: {input_formula}")
+        logger.debug(f"Output: {transformed_str}")
+        logger.debug(f"Expected: {expected_output}")
+
+        # Verify structural correctness
+        assert transformed_ast == expected_ast, (
+            f"Transformation mismatch:\n"
+            f"Input: {input_formula}\n"
+            f"Got: {transformed_str}\n"
+            f"Expected: {expected_output}"
+        )
+
+    @pytest.mark.parametrize("input_formula, expected_output", TEST_CASES)
+    def test_dlnf_structure_validity(self, input_formula, expected_output):
+        """Test that transformed formulas satisfy DLNF structural requirements.
+
+        Args:
+            input_formula: Original PBTL formula string
+            expected_output: Expected DLNF transformation result
+        """
+        logger = get_logger()
+
+        transformed_ast = parse_and_dlnf(input_formula)
+        transformed_str = str(transformed_ast)
+
+        logger.debug(f"Validating DLNF structure for: {transformed_str}")
+
+        # Verify no OR operators exist within EP expressions
+        assert not OR_IN_EP_PATTERN.search(transformed_str), (
+            f"Invalid DLNF structure: Found '|' inside EP() in: {transformed_str}"
+        )
+
+    @pytest.mark.parametrize("input_formula, expected_output", TEST_CASES)
+    def test_dlnf_transformation_idempotence(self, input_formula, expected_output):
+        """Test that DLNF transformation is idempotent.
+
+        Applying the transformation twice should yield identical results.
+
+        Args:
+            input_formula: Original PBTL formula string
+            expected_output: Expected DLNF transformation result
+        """
+        logger = get_logger()
+
+        # First transformation
+        first_transform = parse_and_dlnf(input_formula)
+        first_str = str(first_transform)
+
+        # Second transformation (should be identical)
+        second_transform = parse_and_dlnf(first_str)
+
+        logger.debug(f"Testing idempotence for: {input_formula}")
+        logger.debug(f"First transform: {first_str}")
+        logger.debug(f"Second transform: {str(second_transform)}")
+
+        assert first_transform == second_transform, (
+            f"Transformation not idempotent:\n"
+            f"Original: {input_formula}\n"
+            f"First: {first_str}\n"
+            f"Second: {str(second_transform)}"
+        )
+
+    def test_empty_formula_handling(self):
+        """Test transformation behavior with edge cases."""
+        logger = get_logger()
+
+        # Test basic atomic formulas
+        simple_cases = [
+            ("p", "p"),
+            ("!p", "!p"),
+            ("true", "true"),
+            ("false", "false"),
+        ]
+
+        for input_formula, expected in simple_cases:
+            logger.debug(f"Testing simple case: {input_formula}")
+
+            result = parse_and_dlnf(input_formula)
+            result_str = str(result)
+
+            assert result_str == expected, (
+                f"Simple case failed: {input_formula} -> {result_str}, expected {expected}"
+            )
+
+    def test_complex_nested_formula(self):
+        """Test transformation on highly complex nested formula."""
+        logger = get_logger()
+
+        complex_formula = "EP(EP(a | b) & (EP(c | d) | EP(e & f)))"
+        logger.debug(f"Testing complex formula: {complex_formula}")
+
+        result = parse_and_dlnf(complex_formula)
+        result_str = str(result)
+
+        # Verify no OR within EP
+        assert not OR_IN_EP_PATTERN.search(result_str), (
+            f"Complex formula contains invalid structure: {result_str}"
+        )
+
+        # Verify idempotence
+        second_result = parse_and_dlnf(result_str)
+        assert result == second_result, "Complex formula transformation not idempotent"
+
+        logger.debug(f"Complex formula result: {result_str}")
