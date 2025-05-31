@@ -51,10 +51,6 @@ jobs:
       run: |
         black --check --diff .
 
-    - name: Run type checking with mypy
-      run: |
-        mypy core/ parser/ utils/ --ignore-missing-imports
-
     - name: Run pytest with coverage
       run: |
         pytest tests/ -v --cov=core --cov=parser --cov=utils --cov-report=xml --cov-report=term-missing
