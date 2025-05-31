@@ -76,7 +76,7 @@ Kairos implements the state-of-the-art PBTL runtime verification algorithm, feat
 
 ### System Requirements
 
-- **Python**: 3.8 or higher (recommended: 3.11+)
+- **Python**: 3.10 or higher (recommended: 3.12+)
 - **Memory**: Minimum 512MB RAM (depends on trace size and formula complexity)
 - **Storage**: Minimal storage requirements for traces and results
 

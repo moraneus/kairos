@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: ['3.8', '3.9', '3.10', '3.11', '3.12']
+        python-version: ['3.10', '3.11', '3.12']
       fail-fast: false
 
     steps:
@@ -46,8 +46,8 @@ jobs:
       run: |
         python -c "import core, parser, utils; print('✅ All modules imported successfully')"
 
-    - name: Run linting with black (Python 3.8+ only)
-      if: matrix.python-version != '3.8'
+    - name: Run linting with black (Python 3.10+ only)
+      if: matrix.python-version != '3.10'
       run: |
         black --check --diff .
 
