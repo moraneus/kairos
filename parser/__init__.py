@@ -128,7 +128,7 @@ def parse_and_dlnf(source: str):
     dlnf_result = transformer.transform(ast)
 
     logger.debug(
-        f"DLNF transformation completed, result type: {type(dlnf_result).__name__}"
+        f"DLNF transformation completed, result type: {type(dlnf_result).__name__} (Parsed Formula: {dlnf_result})"
     )
     return dlnf_result
 

@@ -13,7 +13,8 @@ creating a canonical form suitable for the monitoring algorithm.
 The transformation process:
 1. Converts Boolean subformulas to Disjunctive Normal Form (DNF)
 2. Distributes EP operators over disjunctions
-3. Applies Boolean simplifications (double negation, De Morgan's laws)
+3. Applies Boolean simplifications (double negation elimination)
+4. Preserves negated EP formulas as atomic units
 """
 
 from __future__ import annotations
@@ -224,10 +225,13 @@ def _build_and(factors: Tuple[ast.Expr, ...]) -> ast.Expr:
         factors: Tuple of expressions to conjoin
 
     Returns:
-        Conjunction expression or 'true' if empty
+        Conjunction expression, single factor, or 'true' if empty
     """
     if not factors:
         return ast.Literal("true")
+
+    if len(factors) == 1:
+        return factors[0]
 
     expr = factors[0]
     for factor in factors[1:]:
@@ -242,10 +246,13 @@ def _build_or(terms: List[ast.Expr]) -> ast.Expr:
         terms: List of expressions to disjoin
 
     Returns:
-        Disjunction expression or 'false' if empty
+        Disjunction expression, single term, or 'false' if empty
     """
     if not terms:
         return ast.Literal("false")
+
+    if len(terms) == 1:
+        return terms[0]
 
     expr = terms[0]
     for term in terms[1:]:
