@@ -37,6 +37,7 @@ class PBTLLexer(Lexer):
     # Valid token types for parser recognition
     tokens = {
         "EP",
+        "AH",
         "TRUE",
         "FALSE",
         "ID",
@@ -62,6 +63,7 @@ class PBTLLexer(Lexer):
 
     # Keyword mapping: reassign token types for reserved words
     ID["EP"] = "EP"
+    ID["AH"] = "AH"
     ID["true"] = "TRUE"
     ID["false"] = "FALSE"
 

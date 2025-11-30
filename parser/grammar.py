@@ -24,7 +24,7 @@ Operator Precedence (lowest to highest):
 
 from sly import Parser
 from .lexer import PBTLLexer
-from .ast_nodes import Expr, Literal, Not, And, Or, EP
+from .ast_nodes import Expr, Literal, Not, And, Or, EP, AH
 from .exceptions import ParseError
 from utils.logger import get_logger
 
@@ -59,6 +59,19 @@ class _PBTLParser(Parser):
     def expr(self, p) -> Expr:
         """EP temporal operator with parenthesized operand."""
         return EP(p.expr)
+
+    @_("AH LPAREN expr RPAREN")
+    def expr(self, p) -> Expr:
+        """AH temporal operator with parenthesized operand.
+        AH(φ) is converted to ¬EP(¬φ) using the standard PaBTL definition."""
+        # Create AH node first (for better debugging/tracing)
+        ah_node = AH(p.expr)
+
+        # Convert AH to ¬EP(¬φ) form
+        from .ah_rewriter import AHRewriter
+
+        rewriter = AHRewriter()
+        return rewriter.visit_ah(ah_node)
 
     @_("NOT expr")
     def expr(self, p) -> Expr:

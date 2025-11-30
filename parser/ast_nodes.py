@@ -40,6 +40,8 @@ class Visitor(Protocol):
 
     def visit_ep(self, n: EP): ...
 
+    def visit_ah(self, n: AH): ...
+
 
 @dataclass(frozen=True, slots=True)
 class Expr:
@@ -247,3 +249,36 @@ class EP(Expr):
             Formatted string with EP keyword and operand
         """
         return f"EP({self.operand})"
+
+
+@dataclass(frozen=True, slots=True)
+class AH(Expr):
+    """Temporal operator "Always in History" for PBTL formulas.
+
+    Asserts that the operand formula was true at all points in the past
+    along all execution paths. This is equivalent to ¬EP(¬φ).
+
+    Attributes:
+        operand: The formula whose universal past satisfaction is asserted
+    """
+
+    operand: Expr
+
+    def accept(self, v: Visitor):
+        """Accept visitor and dispatch to visit_ah method.
+
+        Args:
+            v: Visitor instance to process this AH operator
+
+        Returns:
+            Result of visitor's visit_ah method
+        """
+        return v.visit_ah(self)
+
+    def __str__(self) -> str:
+        """Return string representation of AH operator.
+
+        Returns:
+            Formatted string with AH keyword and operand
+        """
+        return f"AH({self.operand})"

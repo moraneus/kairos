@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Dict, List, Set, Optional
+from typing import Dict, List, Set, Optional, Tuple
 from parser import parse_and_dlnf
 from parser.ast_nodes import EP, Or, And, Not, Literal, Expr
 from .event import Event, VectorClock
@@ -74,6 +74,7 @@ class EPDisjunct:
     """
 
     ep_formula: EP
+    is_negated: bool = False  # True if this represents !EP(φ)
     p_blocks: List[EP] = field(default_factory=list)
     m_literals: List[Expr] = field(default_factory=list)
     n_blocks: List[EP] = field(default_factory=list)
@@ -159,29 +160,40 @@ class PBTLMonitor:
         # Parse to DLNF
         dlnf_ast = parse_and_dlnf(self.formula_text)
 
+        # Log the conversion if it contains AH (only during monitor initialization)
+        if "AH(" in self.formula_text:
+            logger.info(f"📋 Property converted: {self.formula_text} → {dlnf_ast}")
+
         # Extract and create EP disjuncts
-        ep_nodes = self._extract_ep_disjuncts(dlnf_ast)
-        for ep_node in ep_nodes:
+        ep_nodes, is_negated = self._extract_ep_disjuncts(dlnf_ast)
+        for i, ep_node in enumerate(ep_nodes):
             disjunct = self._create_ep_disjunct(ep_node)
+            disjunct.is_negated = is_negated[i] if i < len(is_negated) else False
             self.disjuncts.append(disjunct)
 
         logger.debug(f"Created {len(self.disjuncts)} EP disjuncts")
 
-    def _extract_ep_disjuncts(self, ast: Expr) -> List[EP]:
+    def _extract_ep_disjuncts(self, ast: Expr) -> Tuple[List[EP], List[bool]]:
         """Extract all EP nodes from DLNF structure.
 
+        Also handles negated EP formulas (from AH conversion).
+
         Args:
-            ast: DLNF AST (disjunction of EP nodes)
+            ast: DLNF AST (disjunction of EP nodes or negated EP)
 
         Returns:
-            List of EP nodes representing disjuncts
+            Tuple of (EP nodes, negation flags) representing disjuncts
         """
         if isinstance(ast, EP):
-            return [ast]
+            return [ast], [False]
         elif isinstance(ast, Or):
-            return self._extract_ep_disjuncts(ast.left) + self._extract_ep_disjuncts(
-                ast.right
-            )
+            left_eps, left_neg = self._extract_ep_disjuncts(ast.left)
+            right_eps, right_neg = self._extract_ep_disjuncts(ast.right)
+            return left_eps + right_eps, left_neg + right_neg
+        elif isinstance(ast, Not) and isinstance(ast.operand, EP):
+            # Handle negated EP formulas (from AH conversion)
+            # !EP(φ) means "φ was never true in the past"
+            return [ast.operand], [True]
         else:
             raise ValueError(f"Expected DLNF (Or of EP), got: {type(ast)}")
 
@@ -968,14 +980,29 @@ class PBTLMonitor:
 
     def _update_global_verdict(self) -> None:
         """Update global verdict based on disjunct verdicts."""
-        verdicts = [d.verdict for d in self.disjuncts]
-
-        if any(v == Verdict.TRUE for v in verdicts):
-            self.global_verdict = Verdict.TRUE
-        elif all(v == Verdict.FALSE for v in verdicts):
-            self.global_verdict = Verdict.FALSE
+        # Handle negated EP formulas (AH conversion)
+        if len(self.disjuncts) == 1 and self.disjuncts[0].is_negated:
+            # For !EP(φ), invert the verdict logic
+            # !EP(φ) is TRUE when EP(φ) is FALSE (and vice versa)
+            disjunct = self.disjuncts[0]
+            if disjunct.verdict == Verdict.TRUE:
+                self.global_verdict = Verdict.FALSE  # EP was satisfied, so !EP is false
+            elif disjunct.verdict == Verdict.FALSE:
+                self.global_verdict = (
+                    Verdict.TRUE
+                )  # EP was not satisfied, so !EP is true
+            else:
+                self.global_verdict = Verdict.UNKNOWN
         else:
-            self.global_verdict = Verdict.UNKNOWN
+            # Normal disjunctive logic for positive EP formulas
+            verdicts = [d.verdict for d in self.disjuncts]
+
+            if any(v == Verdict.TRUE for v in verdicts):
+                self.global_verdict = Verdict.TRUE
+            elif all(v == Verdict.FALSE for v in verdicts):
+                self.global_verdict = Verdict.FALSE
+            else:
+                self.global_verdict = Verdict.UNKNOWN
 
     def finalize(self) -> Verdict:
         """Finalize monitoring by setting remaining UNKNOWN verdicts to FALSE.
