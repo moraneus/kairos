@@ -92,12 +92,13 @@ class TestMonitorBasicProperties:
         """Test property satisfaction with concurrent events."""
         monitor = PBTLMonitor("EP(p & q)")
 
-        # Two concurrent events providing different props
-        event_p = create_event("ep", {"P"}, {"P": 1}, {"p"})
-        event_q = create_event("eq", {"Q"}, {"Q": 1}, {"q"})
+        # Initialize monitor with both processes
+        monitor.initialize_from_trace_processes(["P", "Q"])
 
-        monitor.process_event(event_p)
-        monitor.process_event(event_q)
+        # Create an event that has both properties (joint event)
+        event_both = create_event("epq", {"P", "Q"}, {"P": 1, "Q": 1}, {"p", "q"})
+
+        monitor.process_event(event_both)
 
         assert monitor.global_verdict == Verdict.TRUE
 
@@ -297,6 +298,9 @@ class TestMonitorJointEvents:
     def test_joint_event_p_block_satisfaction(self):
         """Test P-block satisfied by synchronization event."""
         monitor = PBTLMonitor("EP(EP(handshake) & confirmed)")
+
+        # Initialize with all processes that will be used
+        monitor.initialize_from_trace_processes(["P", "Q", "R"])
 
         # Prerequisites
         p_tick = create_event("p_tick", {"P"}, {"P": 1}, set())

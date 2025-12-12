@@ -17,7 +17,6 @@ The configuration handles:
 """
 
 import sys
-import os
 import pytest
 from pathlib import Path
 
@@ -41,11 +40,11 @@ def setup_test_environment():
     Raises:
         pytest.skip: If required modules cannot be imported
     """
-    # Verify core modules are importable
+    # Verify core modules are importable (imports used only for validation)
     try:
-        import core
-        import parser
-        import utils
+        import core  # noqa: F401
+        import parser  # noqa: F401
+        import utils  # noqa: F401
     except ImportError as e:
         pytest.skip(f"Cannot import required modules: {e}")
 

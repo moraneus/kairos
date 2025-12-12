@@ -689,6 +689,7 @@ class TestEdgeCasesAndCornerCases:
     def test_mixed_synchronous_asynchronous_events(self):
         """Test mixing single-process and multi-process synchronization events."""
         monitor = PBTLMonitor("EP(EP(sync_done) & individual_ready)")
+        monitor.initialize_from_trace_processes(["P1", "P2", "P3"])
 
         events = [
             # Individual events

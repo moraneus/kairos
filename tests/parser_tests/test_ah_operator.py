@@ -14,7 +14,13 @@ This module tests the AH temporal operator functionality including:
 
 import pytest
 from parser import parse, parse_and_dlnf
-from parser.ast_nodes import Not, EP, Literal, And, Or, AH
+from parser.ast_nodes import (
+    Not,
+    EP,
+    Literal,
+    And,
+    Or,
+)  # AH is parsed but not directly used
 from utils.logger import get_logger
 
 
